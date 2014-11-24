@@ -1,6 +1,7 @@
 import os
 import cv2
 import numpy as np
+from skimage.transform import resize
 from skimage import exposure
 from skimage.filter import threshold_otsu, gabor_filter
 
@@ -148,9 +149,13 @@ class Data:
         return FeatureExtraction.rawpix_nbins(image, nbins)
 
     @staticmethod
-    def loadImage(filename):
+    def loadImage(filename, square=True):
         image = cv2.imread(filename, cv2.CV_LOAD_IMAGE_GRAYSCALE)
-        return Preprocessing.standardize_shape(image)
+        sqr_image = resize(image, (100, 100))
+        if square:
+            return sqr_image
+        else:
+            return image
 
     @staticmethod
     def loadTrain(n, nbins):
@@ -167,3 +172,13 @@ class Data:
         y = Data.isResistorFromFilename(filenames)
 
         return np.array(X), np.array(y)
+
+if __name__ == '__main__':
+    import matplotlib.pyplot as plt
+    # resistor_path = 'smarterboard-images/resistor1.jpg'
+    resistor_path = '/home/rlouie/draw-rand-ecomps/img-sandbox/resistor10000.jpg'
+    sqrimg = Data.loadImage(resistor_path, square=True)
+    plt.imshow(sqrimg, cmap='gray')
+    plt.title("Should be Square")
+    plt.show()
+
