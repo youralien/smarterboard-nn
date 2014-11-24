@@ -4,6 +4,7 @@ import numpy as np
 from skimage.transform import resize
 from skimage import exposure
 from skimage.filter import threshold_otsu, gabor_filter
+from sklearn.cross_validation import train_test_split
 
 from utils import Utils
 
@@ -151,8 +152,8 @@ class Data:
     @staticmethod
     def loadImage(filename, square=True):
         image = cv2.imread(filename, cv2.CV_LOAD_IMAGE_GRAYSCALE)
-        sqr_image = resize(image, (100, 100))
         if square:
+            sqr_image = resize(image, (100, 100))
             return sqr_image
         else:
             return image
@@ -173,7 +174,21 @@ class Data:
 
         return np.array(X), np.array(y)
 
-if __name__ == '__main__':
+    @staticmethod
+    def loadTrainTest(train_size):
+        fns = Data.getTrainFilenames(-1)
+        
+        images = [np.ravel(Data.loadImage(TRAIN_DATA_DIR + fn)) for fn in fns]
+        X = np.vstack(images)
+        
+        Y = Data.isResistorFromFilename(fns)
+
+        trX, teX, trY, teY = train_test_split(X, Y, train_size=train_size)
+
+        return trX, teX, trY, teY
+
+
+def test_loadImage():
     import matplotlib.pyplot as plt
     # resistor_path = 'smarterboard-images/resistor1.jpg'
     resistor_path = '/home/rlouie/draw-rand-ecomps/img-sandbox/resistor10000.jpg'
@@ -182,3 +197,15 @@ if __name__ == '__main__':
     plt.title("Should be Square")
     plt.show()
 
+def test_loadTrainTest():
+    import matplotlib.pyplot as plt
+    trX, teX, trY, teY = Data.loadTrainTest(0.8)
+    img = teX[0].reshape((100, 100))
+    img_label = "resistor" if teY[0] == 1 else "capacitor"
+    plt.imshow(img, cmap='gray')
+    plt.title("Should be %s" % img_label)
+    plt.show()
+
+if __name__ == '__main__':
+    # test_loadImage()
+    test_loadTrainTest()
