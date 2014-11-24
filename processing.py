@@ -181,7 +181,10 @@ class Data:
         images = [np.ravel(Data.loadImage(TRAIN_DATA_DIR + fn)) for fn in fns]
         X = np.vstack(images)
         
-        Y = Data.isResistorFromFilename(fns)
+        # y has shape (y.size,)
+        y = np.array(Data.isResistorFromFilename(fns))
+        # Y has shape (y.size, 1)
+        Y = y.reshape(y.size, 1)
 
         trX, teX, trY, teY = train_test_split(X, Y, train_size=train_size)
 
