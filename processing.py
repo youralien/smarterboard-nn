@@ -1,6 +1,7 @@
 import os
 import cv2
 import numpy as np
+from skimage.io import imread
 from skimage.transform import resize
 from skimage import exposure
 from skimage.filter import threshold_otsu, gabor_filter
@@ -9,8 +10,7 @@ from sklearn.cross_validation import train_test_split
 from utils import Utils
 
 TRAIN_DATA_DIR = os.path.join(os.path.abspath('.'), 'smarterboard-images/')
-NUM_TRAIN = len(os.listdir(TRAIN_DATA_DIR))
-
+RAND_ECOMPS_DIR = '/home/rlouie/draw-rand-ecomps/img-sandbox/'
 
 class Preprocessing:
     @staticmethod
@@ -133,8 +133,8 @@ class FeatureExtraction:
 class Data:
 
     @staticmethod
-    def getTrainFilenames(n):
-        filenames = os.listdir(TRAIN_DATA_DIR)
+    def getTrainFilenames(n, dir_path=TRAIN_DATA_DIR):
+        filenames = os.listdir(dir_path)
         np.random.shuffle(filenames)
         filenames = filenames[:n]
         return filenames
@@ -154,20 +154,22 @@ class Data:
         image = cv2.imread(filename, cv2.CV_LOAD_IMAGE_GRAYSCALE)
         if square:
             sqr_image = resize(image, (100, 100))
-            return sqr_image
+            return Preprocessing.binary_from_thresh(sqr_image)
+
         else:
-            return image
+            return Preprocessing.binary_from_thresh(image)
+
 
     @staticmethod
-    def loadTrain(n, nbins):
-        filenames = Data.getTrainFilenames(n)
+    def loadTrain(n, nbins, dir_path):
+        filenames = Data.getTrainFilenames(n, dir_path)
 
         X = None
 
         for i in range(n):
             fn = filenames[i]
             X = Utils.vStackMatrices(
-                X, Data.loadImageFeatures(TRAIN_DATA_DIR + fn, nbins)
+                X, Data.loadImageFeatures(dir_path + fn, nbins)
             )
 
         y = Data.isResistorFromFilename(filenames)
@@ -175,10 +177,10 @@ class Data:
         return np.array(X), np.array(y)
 
     @staticmethod
-    def loadTrainTest(train_size):
-        fns = Data.getTrainFilenames(-1)
+    def loadTrainTest(train_size, dir_path=TRAIN_DATA_DIR):
+        fns = Data.getTrainFilenames(-1, dir_path)
         
-        images = [np.ravel(Data.loadImage(TRAIN_DATA_DIR + fn)) for fn in fns]
+        images = [np.ravel(Data.loadImage(dir_path + fn)) for fn in fns]
         X = np.vstack(images)
         
         # y has shape (y.size,)
@@ -193,22 +195,29 @@ class Data:
 
 def test_loadImage():
     import matplotlib.pyplot as plt
-    # resistor_path = 'smarterboard-images/resistor1.jpg'
-    resistor_path = '/home/rlouie/draw-rand-ecomps/img-sandbox/resistor10000.jpg'
-    sqrimg = Data.loadImage(resistor_path, square=True)
-    plt.imshow(sqrimg, cmap='gray')
+    resistor_path = TRAIN_DATA_DIR + 'resistor1.jpg'
+    img = Data.loadImage(resistor_path, square=True)
+    print img
+    plt.imshow(img, cmap='gray')
     plt.title("Should be Square")
+    plt.show()
+    hist, bins = exposure.histogram(img)
+    plt.plot(bins, hist)
     plt.show()
 
 def test_loadTrainTest():
     import matplotlib.pyplot as plt
-    trX, teX, trY, teY = Data.loadTrainTest(0.8)
+    trX, teX, trY, teY = Data.loadTrainTest(0.8, RAND_ECOMPS_DIR)
     img = teX[0].reshape((100, 100))
+    print img
     img_label = "resistor" if teY[0] == 1 else "capacitor"
     plt.imshow(img, cmap='gray')
     plt.title("Should be %s" % img_label)
     plt.show()
+    hist, bins = exposure.histogram(img)
+    plt.plot(bins, hist)
+    plt.show()
 
 if __name__ == '__main__':
-    # test_loadImage()
+    test_loadImage()
     test_loadTrainTest()
