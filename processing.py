@@ -1,14 +1,16 @@
 import os
 import cv2
 import numpy as np
+from skimage.io import imread
+from skimage.transform import resize
 from skimage import exposure
 from skimage.filter import threshold_otsu, gabor_filter
+from sklearn.cross_validation import train_test_split
 
 from utils import Utils
 
-TRAIN_DATA_DIR = os.path.join(os.path.abspath('.'), 'smarterboard-images/')
-NUM_TRAIN = len(os.listdir(TRAIN_DATA_DIR))
-
+HAND_DRAWN_DIR = os.path.join(os.path.abspath('.'), 'smarterboard-images/')
+RAND_ECOMPS_DIR = os.path.join(os.path.abspath('.'), 'rand-ecomps-images/')
 
 class Preprocessing:
     @staticmethod
@@ -131,8 +133,8 @@ class FeatureExtraction:
 class Data:
 
     @staticmethod
-    def getTrainFilenames(n):
-        filenames = os.listdir(TRAIN_DATA_DIR)
+    def getTrainFilenames(n, dir_path=HAND_DRAWN_DIR):
+        filenames = os.listdir(dir_path)
         np.random.shuffle(filenames)
         filenames = filenames[:n]
         return filenames
@@ -148,22 +150,86 @@ class Data:
         return FeatureExtraction.rawpix_nbins(image, nbins)
 
     @staticmethod
-    def loadImage(filename):
+    def loadImage(filename, square=True):
         image = cv2.imread(filename, cv2.CV_LOAD_IMAGE_GRAYSCALE)
-        return Preprocessing.standardize_shape(image)
+        if square:
+            sqr_image = resize(image, (100, 100))
+            return Preprocessing.binary_from_thresh(sqr_image)
+
+        else:
+            return Preprocessing.binary_from_thresh(image)
+
 
     @staticmethod
-    def loadTrain(n, nbins):
-        filenames = Data.getTrainFilenames(n)
+    def loadTrain(dir_path=HAND_DRAWN_DIR):
+        """ loads training data (trX, trY) for the nnet theano implementation. 
+        See dinopants174/SmarterBoard for implementation including loading histograms of 
+        Gabor Filtered Images 
 
-        X = None
+        Arguments
+        ---------
+        dir_path: a str or None
+            the path to the training image directory.  If None, uses the HAND_DRAWN_DIR path
+            specified in processing.py.
 
-        for i in range(n):
-            fn = filenames[i]
-            X = Utils.vStackMatrices(
-                X, Data.loadImageFeatures(TRAIN_DATA_DIR + fn, nbins)
-            )
+        Returns
+        -------
+        X: array-like, shape (n_samples, n_features)
+            data inputs
 
-        y = Data.isResistorFromFilename(filenames)
+        Y: array-like, shape (n_samples, 1)
+            labels or teaching examples
+        """
 
-        return np.array(X), np.array(y)
+        fns = Data.getTrainFilenames(-1, dir_path)
+        
+        images = [np.ravel(Data.loadImage(dir_path + fn)) for fn in fns]
+        X = np.vstack(images)
+        
+        # y has shape (y.size,)
+        y = np.array(Data.isResistorFromFilename(fns))
+        # Y has shape (y.size, 1)
+        Y = y.reshape(y.size, 1)
+
+        return X, Y
+
+    @staticmethod
+    def loadTrainTest(train_size, dir_path=HAND_DRAWN_DIR):
+        """ loads training data, and holds out a percentage of this data for
+        test validation """
+        
+        X, Y = Data.loadTrain(dir_path)
+
+        trX, teX, trY, teY = train_test_split(X, Y, train_size=train_size)
+
+        return trX, teX, trY, teY
+
+
+def test_loadImage():
+    import matplotlib.pyplot as plt
+    resistor_path = HAND_DRAWN_DIR + 'resistor1.jpg'
+    img = Data.loadImage(resistor_path, square=True)
+    print img
+    plt.imshow(img, cmap='gray')
+    plt.title("Should be Square")
+    plt.show()
+    hist, bins = exposure.histogram(img)
+    plt.plot(bins, hist)
+    plt.show()
+
+def test_loadTrainTest():
+    import matplotlib.pyplot as plt
+    trX, teX, trY, teY = Data.loadTrainTest(0.8, RAND_ECOMPS_DIR)
+    img = teX[0].reshape((100, 100))
+    print img
+    img_label = "resistor" if teY[0] == 1 else "capacitor"
+    plt.imshow(img, cmap='gray')
+    plt.title("Should be %s" % img_label)
+    plt.show()
+    hist, bins = exposure.histogram(img)
+    plt.plot(bins, hist)
+    plt.show()
+
+if __name__ == '__main__':
+    test_loadImage()
+    test_loadTrainTest()
