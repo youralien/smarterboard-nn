@@ -1,5 +1,7 @@
 # data directories
-# smarterboard-images/
+smarterboard-images/
+rand-ecomps-images/
+rand-ecomps-images-thin/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
