@@ -161,23 +161,26 @@ class Data:
 
 
     @staticmethod
-    def loadTrain(n, nbins, dir_path):
-        filenames = Data.getTrainFilenames(n, dir_path)
+    def loadTrain(dir_path=HAND_DRAWN_DIR):
+        """ loads training data (trX, trY) for the nnet theano implementation. 
+        See dinopants174/SmarterBoard for implementation including loading histograms of 
+        Gabor Filtered Images 
 
-        X = None
+        Arguments
+        ---------
+        dir_path: a str or None
+            the path to the training image directory.  If None, uses the HAND_DRAWN_DIR path
+            specified in processing.py.
 
-        for i in range(n):
-            fn = filenames[i]
-            X = Utils.vStackMatrices(
-                X, Data.loadImageFeatures(dir_path + fn, nbins)
-            )
+        Returns
+        -------
+        X: array-like, shape (n_samples, n_features)
+            data inputs
 
-        y = Data.isResistorFromFilename(filenames)
+        Y: array-like, shape (n_samples, 1)
+            labels or teaching examples
+        """
 
-        return np.array(X), np.array(y)
-
-    @staticmethod
-    def loadTrainTest(train_size, dir_path=HAND_DRAWN_DIR):
         fns = Data.getTrainFilenames(-1, dir_path)
         
         images = [np.ravel(Data.loadImage(dir_path + fn)) for fn in fns]
@@ -187,6 +190,15 @@ class Data:
         y = np.array(Data.isResistorFromFilename(fns))
         # Y has shape (y.size, 1)
         Y = y.reshape(y.size, 1)
+
+        return X, Y
+
+    @staticmethod
+    def loadTrainTest(train_size, dir_path=HAND_DRAWN_DIR):
+        """ loads training data, and holds out a percentage of this data for
+        test validation """
+        
+        X, Y = Data.loadTrain(dir_path)
 
         trX, teX, trY, teY = train_test_split(X, Y, train_size=train_size)
 
