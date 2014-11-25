@@ -9,8 +9,8 @@ from sklearn.cross_validation import train_test_split
 
 from utils import Utils
 
-TRAIN_DATA_DIR = os.path.join(os.path.abspath('.'), 'smarterboard-images/')
-RAND_ECOMPS_DIR = '/home/rlouie/draw-rand-ecomps/img-sandbox/'
+HAND_DRAWN_DIR = os.path.join(os.path.abspath('.'), 'smarterboard-images/')
+RAND_ECOMPS_DIR = os.path.join(os.path.abspath('.'), 'rand-ecomps-images/')
 
 class Preprocessing:
     @staticmethod
@@ -133,7 +133,7 @@ class FeatureExtraction:
 class Data:
 
     @staticmethod
-    def getTrainFilenames(n, dir_path=TRAIN_DATA_DIR):
+    def getTrainFilenames(n, dir_path=HAND_DRAWN_DIR):
         filenames = os.listdir(dir_path)
         np.random.shuffle(filenames)
         filenames = filenames[:n]
@@ -177,7 +177,7 @@ class Data:
         return np.array(X), np.array(y)
 
     @staticmethod
-    def loadTrainTest(train_size, dir_path=TRAIN_DATA_DIR):
+    def loadTrainTest(train_size, dir_path=HAND_DRAWN_DIR):
         fns = Data.getTrainFilenames(-1, dir_path)
         
         images = [np.ravel(Data.loadImage(dir_path + fn)) for fn in fns]
@@ -195,7 +195,7 @@ class Data:
 
 def test_loadImage():
     import matplotlib.pyplot as plt
-    resistor_path = TRAIN_DATA_DIR + 'resistor1.jpg'
+    resistor_path = HAND_DRAWN_DIR + 'resistor1.jpg'
     img = Data.loadImage(resistor_path, square=True)
     print img
     plt.imshow(img, cmap='gray')

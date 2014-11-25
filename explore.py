@@ -4,10 +4,29 @@ from foxhound.neural_network.layers import Input, Dense
 # from foxhound.utils import updates
 from foxhound.neural_network.nnet import Net
 from sklearn import metrics
+import matplotlib.pyplot as plt
 
-from processing import Data
+from processing import Data, HAND_DRAWN_DIR, RAND_ECOMPS_DIR
 
-trX, teX, trY, teY = Data.loadTrainTest(0.9)
+trX, teX, trY, teY = Data.loadTrainTest(0.1, HAND_DRAWN_DIR)
+trX1, teX1, trY1, teY1 = Data.loadTrainTest(0.9, RAND_ECOMPS_DIR)
+
+trX = np.vstack((trX, trX1))
+teX = np.vstack((teX, teX1))
+trY = np.vstack((trY, trY1))
+teY = np.vstack((teY, teY1))
+
+def is_normalized(trX):
+    img = trX[0, :]
+    print img
+    if np.max(img) > 1:
+        print "Not Normalized. Must Fall between 0 -1 "
+        return False
+    else:
+        print "Check: is_normalized"
+        return True
+
+assert is_normalized(trX)
 
 trX = floatX(trX)
 teX = floatX(teX)
@@ -38,7 +57,16 @@ model.fit(trX, trY)
 ###Note about predicts
 
 * if doing binary classification ('bse', trY.shape = (trY.size, 1)),
-	must do predict_proba and then np.round.
-	model.predict uses np.argmax.
+    must do predict_proba and then np.round.
+    model.predict uses np.argmax.
 """
-print metrics.accuracy_score(teY, np.round(model.predict_proba(teX)))
+pred_proba = model.predict_proba(teX)
+print pred_proba[:10]
+
+for example_idx in range(10):
+    img = teX[example_idx, :].reshape((100, 100))
+    plt.imshow(img, cmap='gray')
+    plt.title("Resistor? {}".format(pred_proba[example_idx]))
+    plt.show()
+
+print metrics.accuracy_score(teY, np.round(pred_proba))
