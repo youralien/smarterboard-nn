@@ -8,9 +8,10 @@ import matplotlib.pyplot as plt
 
 from processing import Data, HAND_DRAWN_DIR, RAND_ECOMPS_DIR
 
-trX, teX, trY, teY = Data.loadTrainTest(0.1, HAND_DRAWN_DIR)
-trX1, teX1, trY1, teY1 = Data.loadTrainTest(0.9, RAND_ECOMPS_DIR)
+trX, teX, trY, teY = Data.loadTrainTest(0.7, HAND_DRAWN_DIR)
 
+# Combine Random Computer Generated EComponents
+trX1, teX1, trY1, teY1 = Data.loadTrainTest(0.975, RAND_ECOMPS_DIR)
 trX = np.vstack((trX, trX1))
 teX = np.vstack((teX, teX1))
 trY = np.vstack((trY, trY1))
@@ -43,9 +44,9 @@ teY = floatX(teY)
 """
 layers = [
     Input(shape=trX[0].shape),
-    Dense(size=512),
-    Dense(size=512),
-    Dense(activation='sigmoid')
+    Dense(size=512, p_drop=0.2),
+    Dense(size=512, p_drop=0.4),
+    Dense(activation='sigmoid', p_drop=0.5)
 ]
 
 
