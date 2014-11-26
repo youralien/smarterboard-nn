@@ -1,4 +1,4 @@
-notes
+Notes
 ===============
 
 ###Dropout
@@ -8,3 +8,10 @@ notes
 * can't control dropout for Input layer.
 
 
+###Experiments:
+* Adding Artifically Generated Images to Training 
+	* Increased Train Accuracy from 75% -> 95%
+	* Increased Test Accuracy from 65% -> 75%
+* Using Artifically Generated Images for Training and Testing resulted in 100% train/test accuracy!
+* Double the n_epochs -> 98 -> 99% train accuracy
+* dropout is not appearantly fixing the high-variance

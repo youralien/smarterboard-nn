@@ -145,6 +145,27 @@ class Data:
         return is_resistor
 
     @staticmethod
+    def isComponentFromFilename(filenames):
+        """ Parses directory of resistor and capacitor images and determines what
+        the expected output should be.
+
+        Arguments
+        ---------
+        filenames: a str 
+            the path to the training image directory.  
+
+        Returns
+        -------
+        Y: array-like, shape (n_samples, 3)
+            labels or teaching examples
+        """
+        is_resistor = [fn[0] == "r" for fn in filenames]
+        is_capacitor = [fn[0] == "c" for fn in filenames]
+        is_inductor = [fn[0] == "i" for fn in filenames]
+        Y = np.column_stack((is_resistor,is_capacitor,is_inductor))
+        return Y
+
+    @staticmethod
     def loadImageFeatures(filename, nbins):
         image = Data.loadImage(filename)
         return FeatureExtraction.rawpix_nbins(image, nbins)
@@ -230,6 +251,13 @@ def test_loadTrainTest():
     plt.plot(bins, hist)
     plt.show()
 
+def test_isComponentFromFilename():
+    data = Data.getTrainFilenames(-1,HAND_DRAWN_DIR)
+    result = Data.isComponentFromFilename(data)
+    print result
+
+
 if __name__ == '__main__':
-    test_loadImage()
-    test_loadTrainTest()
+    # test_loadImage()
+    # test_loadTrainTest()
+    test_isComponentFromFilename()

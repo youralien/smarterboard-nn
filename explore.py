@@ -8,14 +8,46 @@ import matplotlib.pyplot as plt
 
 from processing import Data, HAND_DRAWN_DIR, RAND_ECOMPS_DIR
 
-trX, teX, trY, teY = Data.loadTrainTest(0.7, HAND_DRAWN_DIR)
+def trXteXtrYteY(use_hand_drawn, use_rand_ecomps, train_size_hand_drawn, train_size_rand_ecomps):
+    """
+    Arguments
+    ---------
+    use_hand_drawn: boolean
+        whether to include HAND_DRAWN_DIR
 
-# Combine Random Computer Generated EComponents
-trX1, teX1, trY1, teY1 = Data.loadTrainTest(0.975, RAND_ECOMPS_DIR)
-trX = np.vstack((trX, trX1))
-teX = np.vstack((teX, teX1))
-trY = np.vstack((trY, trY1))
-teY = np.vstack((teY, teY1))
+    use_rand_ecomps: boolean
+        whether to include RAND_ECOMPS_DIR
+
+    train_size_hand_drawn: float btwn 0-1
+        percentage of hand drawn data for training
+
+    train_size_rand_ecomps: float btwn 0-1
+        percentage of rand ecomps data for training
+    """
+
+    if not use_hand_drawn and not use_rand_ecomps:
+        print "Can't Get Data from Nowhere. Must use one dataset source"
+        return None
+
+    elif use_hand_drawn and not use_rand_ecomps:
+        trX, teX, trY, teY = Data.loadTrainTest(train_size_hand_drawn, HAND_DRAWN_DIR)
+        return trX, teX, trY, teY
+
+    elif use_rand_ecomps and not use_hand_drawn:
+        trX, teX, trY, teY = Data.loadTrainTest(train_size_rand_ecomps, RAND_ECOMPS_DIR)
+        return trX, teX, trY, teY
+
+    else:
+        trX, teX, trY, teY = Data.loadTrainTest(train_size_hand_drawn, HAND_DRAWN_DIR)
+
+        # Combine Random Computer Generated EComponents
+        trX1, teX1, trY1, teY1 = Data.loadTrainTest(train_size_rand_ecomps, RAND_ECOMPS_DIR)
+        trX = np.vstack((trX, trX1))
+        teX = np.vstack((teX, teX1))
+        trY = np.vstack((trY, trY1))
+        teY = np.vstack((teY, teY1))
+
+        return trX, teX, trY, teY
 
 def is_normalized(trX):
     img = trX[0, :]
@@ -26,6 +58,14 @@ def is_normalized(trX):
     else:
         print "Check: is_normalized"
         return True
+
+trX, teX, trY, teY = trXteXtrYteY(
+    use_hand_drawn=True,
+    use_rand_ecomps=False,
+    train_size_hand_drawn=0.7,
+    train_size_rand_ecomps=0.99)
+
+print trY.shape
 
 assert is_normalized(trX)
 
@@ -44,15 +84,15 @@ teY = floatX(teY)
 """
 layers = [
     Input(shape=trX[0].shape),
-    Dense(size=512, p_drop=0.2),
-    Dense(size=512, p_drop=0.4),
-    Dense(activation='sigmoid', p_drop=0.5)
+    Dense(size=2000, p_drop=0.5),
+    Dense(size=400, p_drop=0.5),
+    Dense(activation='sigmoid')
 ]
 
 
 # update = updates.Adadelta(regularizer=updates.Regularizer(l1=1.0))
 
-model = Net(layers=layers, cost='bce', update='adadelta', n_epochs=5)
+model = Net(layers=layers, cost='bce', update='adadelta', n_epochs=10)
 model.fit(trX, trY)
 """
 ###Note about predicts
@@ -61,8 +101,12 @@ model.fit(trX, trY)
     must do predict_proba and then np.round.
     model.predict uses np.argmax.
 """
+
+print "Train Accuracy"
+print metrics.accuracy_score(trY, np.round(model.predict_proba(trX)))
+
+print "Test Accuracy"
 pred_proba = model.predict_proba(teX)
-print pred_proba[:10]
 
 for example_idx in range(10):
     img = teX[example_idx, :].reshape((100, 100))
