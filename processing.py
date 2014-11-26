@@ -182,7 +182,7 @@ class Data:
 
 
     @staticmethod
-    def loadTrain(dir_path=HAND_DRAWN_DIR):
+    def loadTrain(dir_path=HAND_DRAWN_DIR, oneHot=True):
         """ loads training data (trX, trY) for the nnet theano implementation. 
         See dinopants174/SmarterBoard for implementation including loading histograms of 
         Gabor Filtered Images 
@@ -192,6 +192,8 @@ class Data:
         dir_path: a str or None
             the path to the training image directory.  If None, uses the HAND_DRAWN_DIR path
             specified in processing.py.
+
+        oneHot: boolean for resistor vs. resistor, capacitor, inductor testing
 
         Returns
         -------
@@ -207,10 +209,13 @@ class Data:
         images = [np.ravel(Data.loadImage(dir_path + fn)) for fn in fns]
         X = np.vstack(images)
         
-        # y has shape (y.size,)
-        y = np.array(Data.isResistorFromFilename(fns))
-        # Y has shape (y.size, 1)
-        Y = y.reshape(y.size, 1)
+        if not oneHot:
+            # y has shape (y.size,)
+            y = np.array(Data.isResistorFromFilename(fns))
+            # Y has shape (y.size, 1)
+            Y = y.reshape(y.size, 1)
+        else:
+            Y = np.array(Data.isComponentFromFilename(fns))
 
         return X, Y
 

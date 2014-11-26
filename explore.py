@@ -92,7 +92,7 @@ layers = [
 
 # update = updates.Adadelta(regularizer=updates.Regularizer(l1=1.0))
 
-model = Net(layers=layers, cost='bce', update='adadelta', n_epochs=10)
+model = Net(layers=layers, cost='bce', update='adadelta', n_epochs=20)
 model.fit(trX, trY)
 """
 ###Note about predicts
@@ -102,10 +102,30 @@ model.fit(trX, trY)
     model.predict uses np.argmax.
 """
 
-print "Train Accuracy"
-print metrics.accuracy_score(trY, np.round(model.predict_proba(trX)))
+print "Train Accuracy" 
 
-print "Test Accuracy"
+def trainingAccuracy(oneHot):
+    """ Returns accuracy of trX approximation to trY using
+    predict() method form nnet.py
+
+    Arguments
+    ---------
+    oneHot: boolean for resistor vs. resistor, capacitor, inductor testing
+
+    Returns
+    -------
+    acc: percentage of accuracy from the comparison between trX and trY
+    """
+
+    if not oneHot:
+        acc = metrics.accuracy_score(trY, np.round(model.predict_proba(trX)))
+    else:
+        acc = metrics.accuracy_score(np.argmax(trY,axis=1),model.predict(trX))
+    return acc
+
+print trainingAccuracy(oneHot=True)
+
+print "Test Accuracy"   
 pred_proba = model.predict_proba(teX)
 
 for example_idx in range(10):
