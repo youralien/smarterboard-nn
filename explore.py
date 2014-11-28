@@ -6,6 +6,7 @@ from foxhound.neural_network.nnet import Net
 from sklearn import metrics
 import matplotlib.pyplot as plt
 
+from foxhound.utils.vis import grayscale_grid_vis, unit_scale
 from processing import Data, HAND_DRAWN_DIR, RAND_ECOMPS_DIR
 
 def trXteXtrYteY(use_hand_drawn, use_rand_ecomps, train_size_hand_drawn, train_size_rand_ecomps):
@@ -84,16 +85,16 @@ teY = floatX(teY)
 """
 layers = [
     Input(shape=trX[0].shape),
-    Dense(size=2000, p_drop=0.5),
-    Dense(size=400, p_drop=0.5),
-    Dense(activation='sigmoid')
+    Dense(size=1024, p_drop=0.2),
+    Dense(size=1024, p_drop=0.5),
+    Dense(activation='softmax', p_drop=0.5)
 ]
 
 
 # update = updates.Adadelta(regularizer=updates.Regularizer(l1=1.0))
 
-model = Net(layers=layers, cost='bce', update='adadelta', n_epochs=20)
-model.fit(trX, trY)
+model = Net(layers=layers, cost='cce', update='adadelta', n_epochs=100)
+model.fit(trX, trY, batch_size=32)
 """
 ###Note about predicts
 
@@ -128,10 +129,16 @@ print trainingAccuracy(oneHot=True)
 print "Test Accuracy"   
 pred_proba = model.predict_proba(teX)
 
-for example_idx in range(10):
-    img = teX[example_idx, :].reshape((100, 100))
-    plt.imshow(img, cmap='gray')
-    plt.title("Resistor? {}".format(pred_proba[example_idx]))
-    plt.show()
+# for example_idx in range(10):
+#     img = teX[example_idx, :].reshape((100, 100))
+#     plt.imshow(img, cmap='gray')
+#     plt.title("Resistor? {}".format(pred_proba[example_idx]))
+#     plt.show()
 
 print metrics.accuracy_score(teY, np.round(pred_proba))
+
+params = [p.get_value() for p in model.params]
+input_weights = params[-2]
+print input_weights.shape
+
+grayscale_grid_vis(input_weights.T[:100], transform=lambda x: unit_scale(x.reshape((100,100))))
