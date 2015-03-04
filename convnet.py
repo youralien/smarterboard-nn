@@ -136,9 +136,9 @@ trX, teX, trY, teY = trXteXtrYteY(
         train_size_rand_ecomps=0.3)
 
 # trX, teX, trY, teY = mnist(onehot=True)
-
-trX = trX.reshape(-1, 1, 100, 100)
-teX = teX.reshape(-1, 1, 100, 100)
+img_size  = 100
+trX = trX.reshape(-1, 1, img_size,img_size)
+teX = teX.reshape(-1, 1, img_size,img_size)
 
 # mnist images are 28 x 28
 # trX = trX.reshape(-1, 1, 28, 28)
@@ -147,18 +147,24 @@ teX = teX.reshape(-1, 1, 100, 100)
 X = T.ftensor4()
 Y = T.fmatrix()
 
+kernel_size = 3
 # Construct the first convolutional pooling layer:
 # filtering reduces the image size to (100-3+1 , 100-3+1) = (98, 98)
 # maxpooling reduces this further to (98/2, 98/2) = (49, 49)
 # 4D output tensor is thus of shape (batch_size, nkerns[0], 49, 49)
-w = init_weights((1, 1, 3, 3))
+n_fmaps = 1 
+w = init_weights((n_fmaps, 1, kernel_size, kernel_size))
+# img size determined by border_mode, see the first conv2d layer
+reduced_img_size = (img_size - kernel_size + 1)/2
 
 # the HiddenLayer being fully-connected, it operates on 2D matrices of
 # shape (batch_size, num_pixels) (i.e matrix of rasterized images).
 # This will generate a matrix of shape (batch_size, nkerns[1] * 49 * 49),
 # or (128, 1 * 49 * 49) = (128, 2401) with the default values.
-w2 = init_weights((1 * 49 * 49, 25))
-w_o = init_weights((25, 3))
+n_nodes_last_layer = 16
+w2 = init_weights((n_fmaps * reduced_img_size * reduced_img_size, n_nodes_last_layer))
+n_out = 3
+w_o = init_weights((n_nodes_last_layer, n_out))
 
 
 # w = init_weights((32, 1, 3, 3))
