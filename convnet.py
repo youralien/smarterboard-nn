@@ -154,17 +154,17 @@ Y = T.fmatrix()
 # 4D output tensor is thus of shape (batch_size, nkerns[0], 98, 98)
 w = init_weights((32, 1, 3, 3))
 
-# # Construct the second convolutional pooling layer
-# # filtering reduces the image size to (49-3+1, 49-3+1) = (47, 47)
-# # maxpooling reduces this further to (47/2, 47/2) = (24, 24)
-# # 4D output tensor is thus of shape (batch_size, nkerns[1], 24, 24)
-# w2 = init_weights((1, 1, 3, 3))
+# Construct the second convolutional pooling layer
+# filtering reduces the image size to (49-3+1, 49-3+1) = (47, 47)
+# maxpooling reduces this further to (47/2, 47/2) = (24, 24)
+# 4D output tensor is thus of shape (batch_size, nkerns[1], 24, 24)
+w2 = init_weights((1, 1, 3, 3))
 
-# # Construct the third convolutional pooling layer
-# # filtering reduces the image size to (24-3+1, 24-3+1) = (22, 22)
-# # maxpooling reduces this further to (22/2, 22/2) = (11, 11)
-# # 4D output tensor is thus of shape (batch_size, nkerns[1], 11, 11)
-# w3 = init_weights((1, 1, 3, 3))
+# Construct the third convolutional pooling layer
+# filtering reduces the image size to (24-3+1, 24-3+1) = (22, 22)
+# maxpooling reduces this further to (22/2, 22/2) = (11, 11)
+# 4D output tensor is thus of shape (batch_size, nkerns[1], 11, 11)
+w3 = init_weights((1, 1, 3, 3))
 
 # the HiddenLayer being fully-connected, it operates on 2D matrices of
 # shape (batch_size, num_pixels) (i.e matrix of rasterized images).
