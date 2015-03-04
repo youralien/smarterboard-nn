@@ -62,7 +62,7 @@ def model(X, w, w2, w3, w4, w_o, p_drop_conv, p_drop_hidden):
     pyx = softmax(T.dot(l4, w_o))
     return l1, l2, l3, l4, pyx
 
-def testmodel(X, w, w2, w3, w4, w_o, p_drop_conv, p_drop_hidden):
+def testmodel(X, w, w2, w_o, p_drop_conv, p_drop_hidden):
     l1a = rectify(conv2d(X, w, border_mode='full'))
     l1b = max_pool_2d(l1a, (2, 2))
     l1 = T.flatten(l1b, outdim=2)
@@ -153,24 +153,7 @@ Y = T.fmatrix()
 # maxpooling reduces this further to (98/2, 98/2) = (49, 49)
 # 4D output tensor is thus of shape (batch_size, nkerns[0], 98, 98)
 w = init_weights((32, 1, 3, 3))
-
-# Construct the second convolutional pooling layer
-# filtering reduces the image size to (49-3+1, 49-3+1) = (47, 47)
-# maxpooling reduces this further to (47/2, 47/2) = (24, 24)
-# 4D output tensor is thus of shape (batch_size, nkerns[1], 24, 24)
-w2 = init_weights((1, 1, 3, 3))
-
-# Construct the third convolutional pooling layer
-# filtering reduces the image size to (24-3+1, 24-3+1) = (22, 22)
-# maxpooling reduces this further to (22/2, 22/2) = (11, 11)
-# 4D output tensor is thus of shape (batch_size, nkerns[1], 11, 11)
-w3 = init_weights((1, 1, 3, 3))
-
-# the HiddenLayer being fully-connected, it operates on 2D matrices of
-# shape (batch_size, num_pixels) (i.e matrix of rasterized images).
-# This will generate a matrix of shape (batch_size, nkerns[1] * 11 * 11),
-# or (128, 1 * 11 * 11) = (128, 121) with the default values.
-w4 = init_weights((32 * 3 * 3, 25))
+w2 = init_weights((32 * 3 * 3, 25))
 w_o = init_weights((25, 3))
 
 
@@ -187,13 +170,13 @@ Apply node that caused the error: Dot22(Elemwise{mul,no_inplace}.0, <TensorType(
 Inputs shapes: [(128, 18432), (1152, 625)]
 Inputs strides: [(73728, 4), (2500, 4)]
 """
-noise_l1, noise_l2, noise_l3, noise_l4, noise_py_x = testmodel(X, w, w2, w3, w4, w_o, 0.2, 0.5)
-l1, l2, l3, l4, py_x = testmodel(X, w, w2, w3, w4, w_o, 0., 0.)
+noise_l1, noise_l2, noise_l3, noise_l4, noise_py_x = testmodel(X, w, w2, w_o, 0.2, 0.5)
+l1, l2, l3, l4, py_x = testmodel(X, w, w2, w_o, 0., 0.)
 y_x = T.argmax(py_x, axis=1)
 
 
 cost = T.mean(T.nnet.categorical_crossentropy(noise_py_x, Y))
-params = [w, w2, w3, w4, w_o]
+params = [w, w2, w_o]
 updates = RMSprop(cost, params, lr=0.001)
 
 train = theano.function(inputs=[X, Y], outputs=cost, updates=updates, allow_input_downcast=True)
