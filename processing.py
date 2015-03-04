@@ -1,5 +1,4 @@
 import os
-import cv2
 import numpy as np
 from skimage.io import imread
 from skimage.transform import resize
@@ -19,31 +18,6 @@ class Preprocessing:
         thresh = threshold_otsu(img)
         binary = img < thresh
         return binary
-
-    @staticmethod
-    def binary_from_laplacian(img):
-        """ Function that converts an image into binary using
-        a laplacian transform and feeding it into binary_from_thresh """
-        laplacian = cv2.Laplacian(img, cv2.CV_64F)
-        return Preprocessing.binary_from_thresh(laplacian)
-
-    @staticmethod
-    def scale_image(img, scaler, org_dim):
-        """ resizes an image based on a certain scaler
-        args:
-            scaler: int or float. A value of 1.0 would output a
-                image.shape = org_dim
-            org_dim: tuple. Denoting (width, height)
-        returns: ndarray. Scaled image """
-        width, height = org_dim
-        output_size = (int(scaler*width), int(scaler*height))
-        return cv2.resize(img, output_size)
-
-    @staticmethod
-    def standardize_shape(img):
-        """ standardizes the shape of the images to a tested shape for gabor
-        filters """
-        return Preprocessing.scale_image(img, scaler=.25, org_dim=(256, 153))
 
     @staticmethod
     def angle_pass_filter(img, frequency, theta, bandwidth):
@@ -105,17 +79,6 @@ class FeatureExtraction:
         )
 
     @staticmethod
-    def moments_hu(img):
-        """
-        returns the last log transformed Hu Moments
-        args:
-            img: M x N array
-        """
-        raw = cv2.HuMoments(cv2.moments(img))
-        log_trans = -np.sign(raw)*np.log10(np.abs(raw))
-        return log_trans.flatten()[-1]
-
-    @staticmethod
     def rawpix_nbins(image, nbins):
         """
         extracts raw pixel features and a histogram of nbins
@@ -172,14 +135,16 @@ class Data:
 
     @staticmethod
     def loadImage(filename, square=True):
-        image = cv2.imread(filename, cv2.CV_LOAD_IMAGE_GRAYSCALE)
+        if filename[-3:] == 'jpg':
+            image = imread(filename, as_grey=True)
+        elif filename[-3:] == 'npy':
+            image = np.load(filename)
         if square:
             sqr_image = resize(image, (100, 100))
             return Preprocessing.binary_from_thresh(sqr_image)
 
         else:
             return Preprocessing.binary_from_thresh(image)
-
 
     @staticmethod
     def loadTrain(dir_path=HAND_DRAWN_DIR, oneHot=True):
@@ -248,7 +213,7 @@ def test_loadTrainTest():
     trX, teX, trY, teY = Data.loadTrainTest(0.8, RAND_ECOMPS_DIR)
     img = teX[0].reshape((100, 100))
     print img
-    img_label = "resistor" if teY[0] == 1 else "capacitor"
+    img_label = "resistor" if teY[0, 0] == 1 else "capacitor"
     plt.imshow(img, cmap='gray')
     plt.title("Should be %s" % img_label)
     plt.show()
@@ -263,6 +228,6 @@ def test_isComponentFromFilename():
 
 
 if __name__ == '__main__':
-    # test_loadImage()
+    test_loadImage()
     # test_loadTrainTest()
-    test_isComponentFromFilename()
+    # test_isComponentFromFilename()
