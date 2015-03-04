@@ -41,7 +41,7 @@ def RMSprop(cost, params, lr=0.001, rho=0.9, epsilon=1e-6):
         updates.append((p, p - lr * g))
     return updates
 
-def model(X, w, w2, w3, w4, p_drop_conv, p_drop_hidden):
+def model(X, w, w2, w3, w4, w_o, p_drop_conv, p_drop_hidden):
     l1a = rectify(conv2d(X, w, border_mode='full'))
     l1 = max_pool_2d(l1a, (2, 2))
     l1 = dropout(l1, p_drop_conv)
@@ -61,6 +61,32 @@ def model(X, w, w2, w3, w4, p_drop_conv, p_drop_hidden):
 
     pyx = softmax(T.dot(l4, w_o))
     return l1, l2, l3, l4, pyx
+
+def testmodel(X, w, w2, w3, w4, w_o, p_drop_conv, p_drop_hidden):
+    l1a = rectify(conv2d(X, w, border_mode='full'))
+    l1b = max_pool_2d(l1a, (2, 2))
+    l1 = T.flatten(l1b, outdim=2)
+    l1 = dropout(l1, p_drop_conv)
+
+    l2 = rectify(T.dot(l1, w4))
+    l2 = dropout(l2, p_drop_hidden)
+    py_x = softmax(T.dot(l2, w_o))
+
+    # l2a = rectify(conv2d(l1, w2))
+    # l2 = max_pool_2d(l2a, (2, 2))
+    # l2 = dropout(l2, p_drop_conv)
+
+    # l3a = rectify(conv2d(l2, w3))
+    # l3b = max_pool_2d(l3a, (2, 2))
+    # l3 = T.flatten(l3b, outdim=2)
+    # l3 = dropout(l3, p_drop_conv)
+
+    # problem happening here
+    # l4 = rectify(T.dot(l3, w4))
+    # l4 = dropout(l4, p_drop_hidden)
+
+    # pyx = softmax(T.dot(l4, w_o))
+    return l1, l2, l2, l2, pyx    
 
 def trXteXtrYteY(use_hand_drawn, use_rand_ecomps, train_size_hand_drawn, train_size_rand_ecomps):
     """
@@ -126,25 +152,25 @@ Y = T.fmatrix()
 # filtering reduces the image size to (100-3+1 , 100-3+1) = (98, 98)
 # maxpooling reduces this further to (98/2, 98/2) = (49, 49)
 # 4D output tensor is thus of shape (batch_size, nkerns[0], 98, 98)
-w = init_weights((1, 1, 3, 3))
+w = init_weights((32, 1, 3, 3))
 
-# Construct the second convolutional pooling layer
-# filtering reduces the image size to (49-3+1, 49-3+1) = (47, 47)
-# maxpooling reduces this further to (47/2, 47/2) = (24, 24)
-# 4D output tensor is thus of shape (batch_size, nkerns[1], 24, 24)
-w2 = init_weights((1, 1, 3, 3))
+# # Construct the second convolutional pooling layer
+# # filtering reduces the image size to (49-3+1, 49-3+1) = (47, 47)
+# # maxpooling reduces this further to (47/2, 47/2) = (24, 24)
+# # 4D output tensor is thus of shape (batch_size, nkerns[1], 24, 24)
+# w2 = init_weights((1, 1, 3, 3))
 
-# Construct the third convolutional pooling layer
-# filtering reduces the image size to (24-3+1, 24-3+1) = (22, 22)
-# maxpooling reduces this further to (22/2, 22/2) = (11, 11)
-# 4D output tensor is thus of shape (batch_size, nkerns[1], 11, 11)
-w3 = init_weights((1, 1, 3, 3))
+# # Construct the third convolutional pooling layer
+# # filtering reduces the image size to (24-3+1, 24-3+1) = (22, 22)
+# # maxpooling reduces this further to (22/2, 22/2) = (11, 11)
+# # 4D output tensor is thus of shape (batch_size, nkerns[1], 11, 11)
+# w3 = init_weights((1, 1, 3, 3))
 
 # the HiddenLayer being fully-connected, it operates on 2D matrices of
 # shape (batch_size, num_pixels) (i.e matrix of rasterized images).
 # This will generate a matrix of shape (batch_size, nkerns[1] * 11 * 11),
 # or (128, 1 * 11 * 11) = (128, 121) with the default values.
-w4 = init_weights((1 * 3 * 3, 25))
+w4 = init_weights((32 * 3 * 3, 25))
 w_o = init_weights((25, 3))
 
 
@@ -161,8 +187,8 @@ Apply node that caused the error: Dot22(Elemwise{mul,no_inplace}.0, <TensorType(
 Inputs shapes: [(128, 18432), (1152, 625)]
 Inputs strides: [(73728, 4), (2500, 4)]
 """
-noise_l1, noise_l2, noise_l3, noise_l4, noise_py_x = model(X, w, w2, w3, w4, 0.2, 0.5)
-l1, l2, l3, l4, py_x = model(X, w, w2, w3, w4, 0., 0.)
+noise_l1, noise_l2, noise_l3, noise_l4, noise_py_x = testmodel(X, w, w2, w3, w4, w_o, 0.2, 0.5)
+l1, l2, l3, l4, py_x = testmodel(X, w, w2, w3, w4, w_o, 0., 0.)
 y_x = T.argmax(py_x, axis=1)
 
 
