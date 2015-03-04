@@ -63,14 +63,14 @@ def model(X, w, w2, w3, w4, w_o, p_drop_conv, p_drop_hidden):
     return l1, l2, l3, l4, pyx
 
 def testmodel(X, w, w2, w_o, p_drop_conv, p_drop_hidden):
-    l1a = rectify(conv2d(X, w, border_mode='full'))
+    l1a = rectify(conv2d(X, w, border_mode='valid'))
     l1b = max_pool_2d(l1a, (2, 2))
     l1 = T.flatten(l1b, outdim=2)
     l1 = dropout(l1, p_drop_conv)
 
-    l2 = rectify(T.dot(l1, w4))
+    l2 = rectify(T.dot(l1, w2))
     l2 = dropout(l2, p_drop_hidden)
-    py_x = softmax(T.dot(l2, w_o))
+    pyx = softmax(T.dot(l2, w_o))
 
     # l2a = rectify(conv2d(l1, w2))
     # l2 = max_pool_2d(l2a, (2, 2))
@@ -86,7 +86,7 @@ def testmodel(X, w, w2, w_o, p_drop_conv, p_drop_hidden):
     # l4 = dropout(l4, p_drop_hidden)
 
     # pyx = softmax(T.dot(l4, w_o))
-    return l1, l2, l2, l2, pyx    
+    return l1, l2, pyx    
 
 def trXteXtrYteY(use_hand_drawn, use_rand_ecomps, train_size_hand_drawn, train_size_rand_ecomps):
     """
@@ -140,7 +140,6 @@ trX, teX, trY, teY = trXteXtrYteY(
 trX = trX.reshape(-1, 1, 100, 100)
 teX = teX.reshape(-1, 1, 100, 100)
 
-
 # mnist images are 28 x 28
 # trX = trX.reshape(-1, 1, 28, 28)
 # teX = teX.reshape(-1, 1, 28, 28)
@@ -151,9 +150,14 @@ Y = T.fmatrix()
 # Construct the first convolutional pooling layer:
 # filtering reduces the image size to (100-3+1 , 100-3+1) = (98, 98)
 # maxpooling reduces this further to (98/2, 98/2) = (49, 49)
-# 4D output tensor is thus of shape (batch_size, nkerns[0], 98, 98)
-w = init_weights((32, 1, 3, 3))
-w2 = init_weights((32 * 3 * 3, 25))
+# 4D output tensor is thus of shape (batch_size, nkerns[0], 49, 49)
+w = init_weights((1, 1, 3, 3))
+
+# the HiddenLayer being fully-connected, it operates on 2D matrices of
+# shape (batch_size, num_pixels) (i.e matrix of rasterized images).
+# This will generate a matrix of shape (batch_size, nkerns[1] * 49 * 49),
+# or (128, 1 * 49 * 49) = (128, 2401) with the default values.
+w2 = init_weights((1 * 49 * 49, 25))
 w_o = init_weights((25, 3))
 
 
@@ -170,8 +174,8 @@ Apply node that caused the error: Dot22(Elemwise{mul,no_inplace}.0, <TensorType(
 Inputs shapes: [(128, 18432), (1152, 625)]
 Inputs strides: [(73728, 4), (2500, 4)]
 """
-noise_l1, noise_l2, noise_l3, noise_l4, noise_py_x = testmodel(X, w, w2, w_o, 0.2, 0.5)
-l1, l2, l3, l4, py_x = testmodel(X, w, w2, w_o, 0., 0.)
+noise_l1, noise_l2, noise_py_x = testmodel(X, w, w2, w_o, 0.2, 0.5)
+l1, l2, py_x = testmodel(X, w, w2, w_o, 0., 0.)
 y_x = T.argmax(py_x, axis=1)
 
 
