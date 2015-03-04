@@ -62,20 +62,20 @@ def model(X, w, w2, w3, w4, w_o, p_drop_conv, p_drop_hidden):
     pyx = softmax(T.dot(l4, w_o))
     return l1, l2, l3, l4, pyx
 
-def testmodel(X, w, w2, w_o, p_drop_conv, p_drop_hidden):
+def testmodel(X, w, w2, w3, w_o, p_drop_conv, p_drop_hidden):
     l1a = rectify(conv2d(X, w, border_mode='valid'))
-    l1b = max_pool_2d(l1a, (2, 2))
-    l1 = T.flatten(l1b, outdim=2)
+    l1 = max_pool_2d(l1a, (2, 2))
     l1 = dropout(l1, p_drop_conv)
 
-    l2 = rectify(T.dot(l1, w2))
-    l2 = dropout(l2, p_drop_hidden)
-    pyx = softmax(T.dot(l2, w_o))
+    l2a = rectify(conv2d(l1, w2))
+    l2b = max_pool_2d(l2a, (2, 2))
+    l2 = T.flatten(l2b, outdim=2)
+    l2 = dropout(l2, p_drop_conv)
 
-    # l2a = rectify(conv2d(l1, w2))
-    # l2 = max_pool_2d(l2a, (2, 2))
-    # l2 = dropout(l2, p_drop_conv)
-
+    l3 = rectify(T.dot(l2, w3))
+    l3 = dropout(l3, p_drop_hidden)
+    
+    pyx = softmax(T.dot(l3, w_o))
     # l3a = rectify(conv2d(l2, w3))
     # l3b = max_pool_2d(l3a, (2, 2))
     # l3 = T.flatten(l3b, outdim=2)
@@ -86,7 +86,7 @@ def testmodel(X, w, w2, w_o, p_drop_conv, p_drop_hidden):
     # l4 = dropout(l4, p_drop_hidden)
 
     # pyx = softmax(T.dot(l4, w_o))
-    return l1, l2, pyx    
+    return l1, l2, l3, pyx   
 
 def trXteXtrYteY(use_hand_drawn, use_rand_ecomps, train_size_hand_drawn, train_size_rand_ecomps):
     """
@@ -147,22 +147,42 @@ teX = teX.reshape(-1, 1, img_size,img_size)
 X = T.ftensor4()
 Y = T.fmatrix()
 
+def get_reduced_img_size(img_size, kernel_size, border_mode='valid', downscale=2 ):
+    """ Calculates the reduced image size after convolution
+    """
+    # Size adjustment after the convolution filter
+    if border_mode=='valid':
+        new_size = img_size - kernel_size + 1
+    elif border_mode=='full':
+	new_size = img_size + kernel_size + 1
+    else:
+	raise(ValueError, "border_mode must be 'valid' or 'full'")
+    # Size adjustment after the maxpool step
+    return np.ceil(float(new_size) / downscale)
+
 kernel_size = 3
+channels = 1
 # Construct the first convolutional pooling layer:
 # filtering reduces the image size to (100-3+1 , 100-3+1) = (98, 98)
 # maxpooling reduces this further to (98/2, 98/2) = (49, 49)
 # 4D output tensor is thus of shape (batch_size, nkerns[0], 49, 49)
-n_fmaps = 1 
-w = init_weights((n_fmaps, 1, kernel_size, kernel_size))
+n_fmaps = 32
+w = init_weights((n_fmaps, channels, kernel_size, kernel_size))
 # img size determined by border_mode, see the first conv2d layer
-reduced_img_size = (img_size - kernel_size + 1)/2
+# divided by 2 because of 2x2 maxpooling
+reduced_img_size = get_reduced_img_size(img_size, kernel_size)
 
+n_fmaps1 = 64
+w2 = init_weights((n_fmaps1, n_fmaps, kernel_size, kernel_size))
+reduced_img_size1 = get_reduced_img_size(reduced_img_size, kernel_size)
 # the HiddenLayer being fully-connected, it operates on 2D matrices of
 # shape (batch_size, num_pixels) (i.e matrix of rasterized images).
 # This will generate a matrix of shape (batch_size, nkerns[1] * 49 * 49),
 # or (128, 1 * 49 * 49) = (128, 2401) with the default values.
-n_nodes_last_layer = 16
-w2 = init_weights((n_fmaps * reduced_img_size * reduced_img_size, n_nodes_last_layer))
+n_nodes_last_layer = 128
+w3 = init_weights((n_fmaps1 * reduced_img_size1 * reduced_img_size1, n_nodes_last_layer))
+
+
 n_out = 3
 w_o = init_weights((n_nodes_last_layer, n_out))
 
@@ -180,13 +200,13 @@ Apply node that caused the error: Dot22(Elemwise{mul,no_inplace}.0, <TensorType(
 Inputs shapes: [(128, 18432), (1152, 625)]
 Inputs strides: [(73728, 4), (2500, 4)]
 """
-noise_l1, noise_l2, noise_py_x = testmodel(X, w, w2, w_o, 0.2, 0.5)
-l1, l2, py_x = testmodel(X, w, w2, w_o, 0., 0.)
+noise_l1, noise_l2, noise_l3, noise_py_x = testmodel(X, w, w2, w3, w_o, 0.2, 0.5)
+l1, l2, l3, py_x = testmodel(X, w, w2, w3,  w_o, 0., 0.)
 y_x = T.argmax(py_x, axis=1)
 
 
 cost = T.mean(T.nnet.categorical_crossentropy(noise_py_x, Y))
-params = [w, w2, w_o]
+params = [w, w2, w3, w_o]
 updates = RMSprop(cost, params, lr=0.001)
 
 train = theano.function(inputs=[X, Y], outputs=cost, updates=updates, allow_input_downcast=True)
