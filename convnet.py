@@ -11,8 +11,8 @@ srng = RandomStreams()
 def floatX(X):
     return np.asarray(X, dtype=theano.config.floatX)
 
-def init_weights(shape):
-    return theano.shared(floatX(np.random.randn(*shape) * 0.01))
+def init_weights(shape,std_dev=0.05):
+    return theano.shared(floatX(np.random.randn(*shape) * std_dev))
 
 def rectify(X):
     return T.maximum(X, 0.)
@@ -41,38 +41,17 @@ def RMSprop(cost, params, lr=0.001, rho=0.9, epsilon=1e-6):
         updates.append((p, p - lr * g))
     return updates
 
-def model(X, w, w2, w3, w4, w_o, p_drop_conv, p_drop_hidden):
-    l1a = rectify(conv2d(X, w, border_mode='full'))
+def testmodel(X, w, w2, w3, w_o, p_drop_conv, p_drop_hidden, bias_1, bias_2, bias_3):
+    l1a = rectify(conv2d(X, w, border_mode='valid')+bias_1)
     l1 = max_pool_2d(l1a, (2, 2))
     l1 = dropout(l1, p_drop_conv)
 
-    l2a = rectify(conv2d(l1, w2))
-    l2 = max_pool_2d(l2a, (2, 2))
-    l2 = dropout(l2, p_drop_conv)
-
-    l3a = rectify(conv2d(l2, w3))
-    l3b = max_pool_2d(l3a, (2, 2))
-    l3 = T.flatten(l3b, outdim=2)
-    l3 = dropout(l3, p_drop_conv)
-
-    # problem happening here
-    l4 = rectify(T.dot(l3, w4))
-    l4 = dropout(l4, p_drop_hidden)
-
-    pyx = softmax(T.dot(l4, w_o))
-    return l1, l2, l3, l4, pyx
-
-def testmodel(X, w, w2, w3, w_o, p_drop_conv, p_drop_hidden):
-    l1a = rectify(conv2d(X, w, border_mode='valid'))
-    l1 = max_pool_2d(l1a, (2, 2))
-    l1 = dropout(l1, p_drop_conv)
-
-    l2a = rectify(conv2d(l1, w2))
+    l2a = rectify(conv2d(l1, w2)+bias_2)
     l2b = max_pool_2d(l2a, (2, 2))
     l2 = T.flatten(l2b, outdim=2)
     l2 = dropout(l2, p_drop_conv)
 
-    l3 = rectify(T.dot(l2, w3))
+    l3 = rectify(T.dot(l2, w3)+bias_3)
     l3 = dropout(l3, p_drop_hidden)
     
     pyx = softmax(T.dot(l3, w_o))
@@ -167,6 +146,8 @@ channels = 1
 # maxpooling reduces this further to (98/2, 98/2) = (49, 49)
 # 4D output tensor is thus of shape (batch_size, nkerns[0], 49, 49)
 n_fmaps = 32
+bias_1 = init_weights((n_fmaps,98,98),std_dev = 0)
+
 w = init_weights((n_fmaps, channels, kernel_size, kernel_size))
 # img size determined by border_mode, see the first conv2d layer
 # divided by 2 because of 2x2 maxpooling
@@ -174,6 +155,7 @@ reduced_img_size = get_reduced_img_size(img_size, kernel_size)
 
 n_fmaps1 = 64
 w2 = init_weights((n_fmaps1, n_fmaps, kernel_size, kernel_size))
+bias_2 = init_weights((n_fmaps1,47,47),std_dev = 0)
 reduced_img_size1 = get_reduced_img_size(reduced_img_size, kernel_size)
 # the HiddenLayer being fully-connected, it operates on 2D matrices of
 # shape (batch_size, num_pixels) (i.e matrix of rasterized images).
@@ -181,6 +163,7 @@ reduced_img_size1 = get_reduced_img_size(reduced_img_size, kernel_size)
 # or (128, 1 * 49 * 49) = (128, 2401) with the default values.
 n_nodes_last_layer = 128
 w3 = init_weights((n_fmaps1 * reduced_img_size1 * reduced_img_size1, n_nodes_last_layer))
+bias_3 = init_weights((n_nodes_last_layer,),std_dev = 0)
 
 
 n_out = 3
@@ -200,13 +183,13 @@ Apply node that caused the error: Dot22(Elemwise{mul,no_inplace}.0, <TensorType(
 Inputs shapes: [(128, 18432), (1152, 625)]
 Inputs strides: [(73728, 4), (2500, 4)]
 """
-noise_l1, noise_l2, noise_l3, noise_py_x = testmodel(X, w, w2, w3, w_o, 0.2, 0.5)
-l1, l2, l3, py_x = testmodel(X, w, w2, w3,  w_o, 0., 0.)
+noise_l1, noise_l2, noise_l3, noise_py_x = testmodel(X, w, w2, w3, w_o, 0.2, 0.5, bias_1,bias_2, bias_3)
+l1, l2, l3, py_x = testmodel(X, w, w2, w3,  w_o, 0., 0., bias_1,bias_2, bias_3)
 y_x = T.argmax(py_x, axis=1)
 
 
 cost = T.mean(T.nnet.categorical_crossentropy(noise_py_x, Y))
-params = [w, w2, w3, w_o]
+params = [w, w2, w3, w_o, bias_1, bias_2, bias_3]
 updates = RMSprop(cost, params, lr=0.001)
 
 train = theano.function(inputs=[X, Y], outputs=cost, updates=updates, allow_input_downcast=True)
@@ -215,4 +198,4 @@ predict = theano.function(inputs=[X], outputs=y_x, allow_input_downcast=True)
 for i in range(100):
     for start, end in zip(range(0, len(trX), 128), range(128, len(trX), 128)):
         cost = train(trX[start:end], trY[start:end])
-    print np.mean(np.argmax(teY, axis=1) == predict(teX))
+    print np.mean(np.argmax(trY, axis=1) == predict(trX)), np.mean(np.argmax(teY, axis=1) == predict(teX))
